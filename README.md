@@ -42,6 +42,41 @@ open ios/LivingRoomEdge/LivingRoomEdge.xcodeproj
 cd android && ./gradlew :living-room-android:assembleDebug
 ```
 
+> ⚠️ `:app-v2` 的源码跨到了**主仓** `plugins/`（`plugins/netease-music/android`、
+> `plugins/chromecast-display/android`，即 `NetEaseMusicSkill` / `ChromecastDisplaySkill`）——
+> 本仓是 `ios/` + `android/` 的快照，**没有这个目录**。本地编 `:app-v2` 时要先把它挂进来
+> （CI 也是这么做的）：
+>
+> ```bash
+> git clone --depth 1 https://github.com/kaulie/home-agent-os /tmp/home-agent-os
+> ln -s /tmp/home-agent-os/plugins plugins    # 与 android/ 同级
+> ```
+>
+> `:app`、`:living-room-android` 不依赖 `plugins/`，可直接编。
+
+## CI（构建冒烟）
+
+`.github/workflows/ci.yml` —— **只验证「能不能编过」**：不签名、不装真机、不部署（本仓没有部署平台的服务）。
+
+| job | 做什么 |
+|---|---|
+| `ios` | 7 个工程**并行矩阵**（`fail-fast: false`，一次看全）：`xcodebuild -list` + 模拟器 SDK 的 Debug 编译（`CODE_SIGNING_ALLOWED=NO`） |
+| `android` | `:app:assembleDebug` + `:app-v2:assembleDebug` + `:living-room-android:assembleDebug`、`:app-v2:testDebugUnitTest`；先 `clone` 主仓并 symlink `plugins/`（见上） |
+
+日志里会先打印 Xcode / SDK / Java / Gradle 版本；Android 的 debug APK 作为 artifact 上传（便于手装真机）。
+
+本地等价命令：
+
+```bash
+# iOS（逐个工程）
+xcodebuild -project ios/LivingRoomEdge/LivingRoomEdge.xcodeproj -scheme LivingRoomEdge \
+  -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+# Android（先按上面的方式挂好 plugins/）
+cd android && ./gradlew :app:assembleDebug :app-v2:assembleDebug :living-room-android:assembleDebug
+```
+
 ## 与其它仓库的关系
 
 - **协议 / 契约**（HTTP 路由、intent / asset schema、能力声明）在 `home-agent-os`：
