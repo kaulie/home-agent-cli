@@ -1,0 +1,15 @@
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.apk
+*.aab
+
+# Xcode / iOS
+**/xcuserdata/
+*.xcuserstate
+DerivedData/
+.build/
+
+# macOS
+.DS_Store
